@@ -17,13 +17,11 @@
       margin: 0;
       padding: 10px;
     }
-
     @keyframes gradientShift {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     h1 {
       margin: 20px 0 10px;
       font-size: clamp(22px, 6vw, 40px);
@@ -35,7 +33,6 @@
       letter-spacing: 2px;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     }
-
     .timer {
       font-size: clamp(16px, 4vw, 22px);
       font-weight: bold;
@@ -46,7 +43,6 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
-
     .tutorial {
       max-width: 700px;
       background: rgba(255, 255, 255, 0.85);
@@ -55,21 +51,18 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-
     .tutorial summary {
       font-weight: bold;
       cursor: pointer;
       font-size: clamp(16px, 4vw, 20px);
       color: #5c3d2e;
     }
-
     .tutorial p {
       margin: 10px 0 0;
       font-size: clamp(14px, 3.5vw, 18px);
       line-height: 1.5;
       color: #3b2a1a;
     }
-
     .container {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
@@ -80,7 +73,6 @@
       box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
       max-width: 95vw;
     }
-
     .cell {
       width: 100%;
       aspect-ratio: 1/1;
@@ -91,15 +83,12 @@
       color: #3b2a1a;
       border-radius: 4px;
     }
-
     .lightBackground {
       background-color: #f5deb3;
     }
-
     .darkBackground {
       background-color: #deb887;
     }
-
     .buttonContainer {
       margin-top: 15px;
       display: flex;
@@ -107,7 +96,6 @@
       flex-wrap: wrap;
       justify-content: center;
     }
-
     .buttonContainer button {
       flex: 1;
       min-width: 100px;
@@ -120,26 +108,21 @@
       font-size: clamp(14px, 3vw, 18px);
       transition: transform 0.2s, background 0.2s;
     }
-
     .buttonContainer button:hover {
       background: linear-gradient(145deg, #a0522d, #8b4513);
       transform: scale(1.05);
     }
-
     .result {
       margin-top: 15px;
       font-weight: bold;
       text-align: center;
     }
-
     .correct {
       color: green;
     }
-
     .incorrect {
       color: red;
     }
-
     @media (max-width: 600px) {
       .container {
         gap: 1px;
@@ -174,30 +157,31 @@
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", () => {
       const container = document.getElementById("container");
       const timerDisplay = document.getElementById("timer");
       let timerInterval;
       let secondsElapsed = 0;
 
-      // --- Timer Functions ---
+      // Keys for localStorage
+      const STORAGE_KEY = "oheha_sudoku_state";
+
+      // --- Timer functions ---
       function startTimer() {
         clearInterval(timerInterval);
-        secondsElapsed = 0;
-        updateTimerDisplay();
         timerInterval = setInterval(() => {
           secondsElapsed++;
           updateTimerDisplay();
+          saveState();  // auto-save every second
         }, 1000);
       }
-
       function updateTimerDisplay() {
-        let minutes = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
-        let seconds = String(secondsElapsed % 60).padStart(2, '0');
+        const minutes = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+        const seconds = String(secondsElapsed % 60).padStart(2, '0');
         timerDisplay.textContent = `⏱ Time: ${minutes}:${seconds}`;
       }
 
-      // --- Sudoku Functions ---
+      // --- Sudoku logic ---
       function generateRandomSudoku() {
         return [
           [5, 3, 0, 0, 7, 0, 0, 0, 0],
@@ -213,87 +197,200 @@
       }
 
       function solveSudoku(board) {
-        const solvedPuzzle = JSON.parse(JSON.stringify(board));
-        solveHelper(solvedPuzzle);
-        return solvedPuzzle;
+        const copy = JSON.parse(JSON.stringify(board));
+        solveHelper(copy);
+        return copy;
       }
-
       function solveHelper(board) {
-        const emptyCell = findEmptyCell(board);
-        if (!emptyCell) return true;
-        const [row, col] = emptyCell;
+        const empty = findEmptyCell(board);
+        if (!empty) return true;
+        const [r, c] = empty;
         for (let num = 1; num <= 9; num++) {
-          if (isValidMove(board, row, col, num)) {
-            board[row][col] = num;
+          if (isValidMove(board, r, c, num)) {
+            board[r][c] = num;
             if (solveHelper(board)) return true;
-            board[row][col] = 0;
+            board[r][c] = 0;
           }
         }
         return false;
       }
-
       function findEmptyCell(board) {
-        for (let row = 0; row < 9; row++) {
-          for (let col = 0; col < 9; col++) {
-            if (board[row][col] === 0) return [row, col];
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (board[r][c] === 0) return [r, c];
           }
         }
         return null;
       }
-
       function isValidMove(board, row, col, num) {
         for (let i = 0; i < 9; i++) {
           if (board[row][i] === num || board[i][col] === num) return false;
         }
-        const startRow = Math.floor(row / 3) * 3;
-        const startCol = Math.floor(col / 3) * 3;
-        for (let i = startRow; i < startRow + 3; i++) {
-          for (let j = startCol; j < startCol + 3; j++) {
-            if (board[i][j] === num) return false;
+        const sr = Math.floor(row / 3) * 3;
+        const sc = Math.floor(col / 3) * 3;
+        for (let r = sr; r < sr + 3; r++) {
+          for (let c = sc; c < sc + 3; c++) {
+            if (board[r][c] === num) return false;
           }
         }
         return true;
       }
 
-      function createSudokuGrid(puzzle) {
-        container.innerHTML = '';
-        puzzle.forEach((row, rowIndex) => {
-          row.forEach((cell, colIndex) => {
-            const cellElement = document.createElement('input');
-            cellElement.classList.add('cell');
-            cellElement.classList.add((rowIndex + colIndex) % 2 === 0 ? 'lightBackground' : 'darkBackground');
-            cellElement.type = 'text';
-            cellElement.maxLength = 1;
-            cellElement.value = cell !== 0 ? cell : '';
-            container.appendChild(cellElement);
-          });
-        });
+      // --- UI / grid rendering ---
+      function createSudokuGrid(state) {
+        container.innerHTML = "";
+        // state is an object: { puzzle, userInputs, fixedCells }
+        const { puzzle, userInputs, fixed } = state;
+
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cell = document.createElement("input");
+            cell.classList.add("cell");
+            cell.classList.add((r + c) % 2 === 0 ? "lightBackground" : "darkBackground");
+            cell.type = "text";
+            cell.maxLength = 1;
+            const key = r + "-" + c;
+            if (fixed[key]) {
+              cell.value = puzzle[r][c];
+              cell.disabled = true;
+            } else {
+              cell.value = userInputs[key] || "";
+              cell.disabled = false;
+              cell.addEventListener("input", (e) => {
+                const v = e.target.value;
+                if (/^[1-9]$/.test(v)) {
+                  userInputs[key] = parseInt(v, 10);
+                } else {
+                  delete userInputs[key];
+                  e.target.value = "";
+                }
+                saveState();
+              });
+            }
+            container.appendChild(cell);
+          }
+        }
       }
 
-      let initialPuzzle = generateRandomSudoku();
-      let puzzle = JSON.parse(JSON.stringify(initialPuzzle));
-      let solvedPuzzle = [];
+      // --- State persistence ---
+      function getEmptyState() {
+        const puzzle = generateRandomSudoku();
+        const fixed = {};
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (puzzle[r][c] !== 0) {
+              fixed[r + "-" + c] = true;
+            }
+          }
+        }
+        return {
+          puzzle,
+          fixed,
+          userInputs: {}
+        };
+      }
+
+      function saveState() {
+        const state = {
+          puzzleState,
+          secondsElapsed,
+          solved: isSolved()
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (err) {
+          console.warn("Could not save state:", err);
+        }
+      }
+
+      function loadState() {
+        try {
+          const json = localStorage.getItem(STORAGE_KEY);
+          if (!json) return null;
+          const obj = JSON.parse(json);
+          return obj;
+        } catch (err) {
+          console.warn("Could not load state:", err);
+          return null;
+        }
+      }
+
+      function isSolved() {
+        const { puzzle, fixed, userInputs } = puzzleState;
+        // Construct full board
+        const board = puzzle.map((row) => row.slice());
+        for (const key in userInputs) {
+          const [r, c] = key.split("-").map(Number);
+          board[r][c] = userInputs[key];
+        }
+        // Check if board is valid and full
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (board[r][c] === 0 || !isValidMove(board, r, c, board[r][c])) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
 
       function solvePuzzle() {
-        solvedPuzzle = solveSudoku(puzzle);
-        createSudokuGrid(solvedPuzzle);
-        clearInterval(timerInterval); // Stop timer when solved
+        // Build full board from puzzle + userInputs
+        const { puzzle, fixed, userInputs } = puzzleState;
+        const board = puzzle.map((r) => r.slice());
+        for (const key in userInputs) {
+          const [r, c] = key.split("-").map(Number);
+          board[r][c] = userInputs[key];
+        }
+        const solved = solveSudoku(board);
+        // Overwrite userInputs with full solution
+        puzzleState.userInputs = {};
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const key = r + "-" + c;
+            if (!puzzleState.fixed[key]) {
+              puzzleState.userInputs[key] = solved[r][c];
+            }
+          }
+        }
+        createSudokuGrid(puzzleState);
+        clearInterval(timerInterval);  // stop timer
+        saveState();
       }
 
       function resetPuzzle() {
-        initialPuzzle = generateRandomSudoku();
-        puzzle = JSON.parse(JSON.stringify(initialPuzzle));
-        solvedPuzzle = [];
-        createSudokuGrid(puzzle);
-        startTimer(); // restart timer
+        puzzleState = getEmptyState();
+        secondsElapsed = 0;
+        updateTimerDisplay();
+        createSudokuGrid(puzzleState);
+        startTimer();
+        saveState();
       }
 
-      // Init
-      createSudokuGrid(puzzle);
-      startTimer();
+      // --- Initialization ---
+      let puzzleState;
+      const loaded = loadState();
+      if (loaded && confirm("Resume your previous Sudoku game?")) {
+        // restore
+        puzzleState = loaded.puzzleState;
+        secondsElapsed = loaded.secondsElapsed || 0;
+        createSudokuGrid(puzzleState);
+        updateTimerDisplay();
+        if (!loaded.solved) {
+          startTimer();
+        }
+      } else {
+        resetPuzzle();
+      }
 
+      // Button listeners
       document.getElementById("solveButton").addEventListener("click", solvePuzzle);
-      document.getElementById("resetButton").addEventListener("click", resetPuzzle);
+      document.getElementById("resetButton").addEventListener("click", () => {
+        if (confirm("Start a new game? Previous progress will be lost.")) {
+          localStorage.removeItem(STORAGE_KEY);
+          resetPuzzle();
+        }
+      });
     });
   </script>
 </body>
