@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Wooden Sudoku App</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(to right, #eacda3, #d6ae7b);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 2px;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+      max-width: 95vw;
+    }
+    .cell {
+      width: 100%;
+      aspect-ratio: 1/1;
+      border: 1px solid #5c3d2e;
+      text-align: center;
+      font-size: clamp(14px, 2.5vw, 20px);
+      font-weight: bold;
+      color: #3b2a1a;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .cell:nth-child(3n) { border-right: 2px solid #5c3d2e; }
+    .row:nth-child(3n) .cell { border-bottom: 2px solid #5c3d2e; }
+    .lightBackground { background-color: #f5deb3; }
+    .darkBackground { background-color: #deb887; }
+    .difficultyContainer, .buttonContainer {
+      margin-top: 15px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px 20px;
+      background-color: #8b4513;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: clamp(14px, 3vw, 18px);
+      transition: background 0.2s ease-in-out;
+    }
+    button:hover { background-color: #a0522d; }
+    .result {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+      font-size: clamp(14px, 3vw, 18px);
+    }
+    .correct { color: green; }
+    .incorrect { color: red; }
+    @media (max-width: 600px) {
+      .container { gap: 1px; padding: 6px; }
+      .cell {
+        font-size: clamp(12px, 4vw, 16px);
+        min-width: 30px;
+        min-height: 30px;
+      }
+      button { padding: 8px 16px; font-size: clamp(12px, 3vw, 16px); }
+    }
+    @media (max-width: 400px) {
+      .cell {
+        font-size: clamp(10px, 3.5vw, 14px);
+        min-width: 24px;
+        min-height: 24px;
+      }
+      button { padding: 6px 12px; font-size: clamp(10px, 3vw, 14px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="container"></div>
+  <div class="difficultyContainer">
+    <button id="easyButton">Easy</button>
+    <button id="mediumButton">Medium</button>
+    <button id="hardButton">Hard</button>
+  </div>
+  <div class="buttonContainer">
+    <button id="solveButton">Solve</button>
+    <button id="resetButton">Reset</button>
+  </div>
+  <div class="result" id="result"></div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const container = document.getElementById("container");
+      const result = document.getElementById("result");
+      let puzzle = [];
+      let initialPuzzle = [];
+      let solvedPuzzle = [];
+
+      function generateSolvedBoard() {
+        const board = Array(9).fill().map(() => Array(9).fill(0));
+        fillDiagonal(board);
+        solveHelper(board);
+        return board;
+      }
+
+      function fillDiagonal(board) {
+        for (let box = 0; box < 9; box += 3) {
+          const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+          shuffleArray(numbers);
+          let index = 0;
+          for (let i = box; i < box + 3; i++) {
+            for (let j = box; j < box + 3; j++) {
+              board[i][j] = numbers[index++];
+            }
+          }
+        }
+      }
+
+      function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+
+      function generatePuzzle(difficulty) {
+        const solved = generateSolvedBoard();
+        const puzzle = JSON.parse(JSON.stringify(solved));
+        let cellsToRemove;
+        switch (difficulty) {
+          case 'easy': cellsToRemove = Math.floor(Math.random() * (55 - 50 + 1)) + 50; break;
+          case 'medium': cellsToRemove = Math.floor(Math.random() * (45 - 40 + 1)) + 40; break;
+          case 'hard': cellsToRemove = Math.floor(Math.random() * (35 - 30 + 1)) + 30; break;
+          default: cellsToRemove = 40;
+        }
+        let removed = 0;
+        while (removed < cellsToRemove) {
+          const row = Math.floor(Math.random() * 9);
+          const col = Math.floor(Math.random() * 9);
+          if (puzzle[row][col] !== 0) {
+            puzzle[row][col] = 0;
+            removed++;
+          }
+        }
+        return { puzzle, solved };
+      }
+
+      function solveSudoku(board) {
+        const solvedPuzzle = JSON.parse(JSON.stringify(board));
+        solveHelper(solvedPuzzle);
+        return solvedPuzzle;
+      }
+
+      function solveHelper(board) {
+        const emptyCell = findEmptyCell(board);
+        if (!emptyCell) return true;
+        const [row, col] = emptyCell;
+        for (let num = 1; num <= 9; num++) {
+          if (isValidMove(board, row, col, num)) {
+            board[row][col] = num;
+            if (solveHelper(board)) return true;
+            board[row][col] = 0;
+          }
+        }
+        return false;
+      }
+
+      function findEmptyCell(board) {
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            if (board[row][col] === 0) return [row, col];
+          }
+        }
+        return null;
+      }
+
+      function isValidMove(board, row, col, num) {
+        for (let i = 0; i < 9; i++) {
+          if (board[row][i] === num || board[i][col] === num) return false;
+        }
+        const startRow = Math.floor(row / 3) * 3;
+        const startCol = Math.floor(col / 3) * 3;
+        for (let i = startRow; i < startRow + 3; i++) {
+          for (let j = startCol; j < startCol + 3; j++) {
+            if (board[i][j] === num) return false;
+          }
+        }
+        return true;
+      }
+
+      function createSudokuGrid(puzzle) {
+        container.innerHTML = '';
+        puzzle.forEach((row, rowIndex) => {
+          row.forEach((cell, colIndex) => {
+            const cellElement = document.createElement('input');
+            cellElement.classList.add('cell');
+            cellElement.classList.add((rowIndex + colIndex) % 2 === 0 ? 'lightBackground' : 'darkBackground');
+            if (rowIndex % 3 === 0 && rowIndex !== 0) cellElement.classList.add('row');
+            cellElement.type = 'text';
+            cellElement.maxLength = 1;
+            cellElement.value = cell !== 0 ? cell : '';
+            cellElement.addEventListener('input', (e) => {
+              const value = e.target.value;
+              if (value && !/^[1-9]$/.test(value)) {
+                e.target.value = '';
+                result.textContent = 'Please enter a number from 1 to 9';
+                result.classList.add('incorrect');
+              } else {
+                result.textContent = '';
+                result.classList.remove('incorrect');
+              }
+            });
+            container.appendChild(cellElement);
+          });
+        });
+      }
+
+      function initPuzzle(difficulty = 'medium') {
+        const { puzzle: newPuzzle, solved: newSolved } = generatePuzzle(difficulty);
+        initialPuzzle = JSON.parse(JSON.stringify(newPuzzle));
+        puzzle = JSON.parse(JSON.stringify(newPuzzle));
+        solvedPuzzle = newSolved;
+        createSudokuGrid(puzzle);
+        result.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+      }
+
+      function solvePuzzle() {
+        createSudokuGrid(solvedPuzzle);
+        result.textContent = 'Puzzle Solved!';
+        result.classList.add('correct');
+      }
+
+      function resetPuzzle() {
+        puzzle = JSON.parse(JSON.stringify(initialPuzzle));
+        createSudokuGrid(puzzle);
+        result.textContent = '';
+        result.classList.remove('correct', 'incorrect');
+      }
+
+      initPuzzle('medium');
+
+      document.getElementById("easyButton").addEventListener("click", () => initPuzzle('easy'));
+      document.getElementById("mediumButton").addEventListener("click", () => initPuzzle('medium'));
+      document.getElementById("hardButton").addEventListener("click", () => initPuzzle('hard'));
+      document.getElementById("solveButton").addEventListener("click", solvePuzzle);
+      document.getElementById("resetButton").addEventListener("click", resetPuzzle);
+    });
+  </script>
+</body>
+</html>
